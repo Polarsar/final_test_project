@@ -2,9 +2,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from .locators import BasePageLocators
-
-# base_page.py
-from .locators import BasePageLocators
+from selenium.webdriver.common.by import By
 
 class BasePage():
     def __init__(self, browser, url):
@@ -15,10 +13,23 @@ class BasePage():
         self.browser.get(self.url)
 
     def is_element_present(self, how, what):
-        from selenium.common.exceptions import NoSuchElementException
         try:
             self.browser.find_element(how, what)
         except NoSuchElementException:
+            return False
+        return True
+
+    def is_not_element_present(self, how, what, timeout=4):
+        try:
+            WebDriverWait(self.browser, timeout).until(EC.presence_of_element_located((how, what)))
+        except TimeoutException:
+            return True
+        return False
+
+    def is_disappeared(self, how, what, timeout=4):
+        try:
+            WebDriverWait(self.browser, timeout, 1, TimeoutException).until_not(EC.presence_of_element_located((how, what)))
+        except TimeoutException:
             return False
         return True
 
@@ -29,5 +40,13 @@ class BasePage():
     def should_be_login_link(self):
         assert self.is_element_present(*BasePageLocators.LOGIN_LINK), "Login link is not presented"
 
+    def go_to_basket_page(self):
+        basket_link = self.browser.find_element(*BasePageLocators.BASKET_LINK)
+        basket_link.click()
+
+class BasePageLocators:
+    LOGIN_LINK = (By.CSS_SELECTOR, "#login_link")
+    LOGIN_LINK_INVALID = (By.CSS_SELECTOR, "#login_link_inc")
+    BASKET_LINK = (By.CSS_SELECTOR, ".basket-mini a.btn")
 
 
