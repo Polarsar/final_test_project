@@ -1,23 +1,64 @@
-from pages.base_page import BasePage
-from pages.locators import ProductPageLocators
+import math
+import re
+import time
+from selenium.common.exceptions import NoAlertPresentException
+from .base_page import BasePage
+from .locators import ProductPageLocators
 
 class ProductPage(BasePage):
-    def add_to_basket(self):
-        basket_button = self.browser.find_element(*ProductPageLocators.ADD_TO_BASKET_BUTTON)
-        basket_button.click()
 
-    def get_product_name(self):
-        return self.browser.find_element(*ProductPageLocators.PRODUCT_NAME).text
+    def __init__(self, browser, url):
+        super().__init__(browser, url)
 
-    def get_product_price(self):
-        return self.browser.find_element(*ProductPageLocators.PRODUCT_PRICE).text
+    def add_product_to_basket(self):
+        add_button = self.browser.find_element(*ProductPageLocators.ADD_TO_BASKET_BUTTON)
+        add_button.click()
+        self.solve_quiz_and_get_code()
 
-    def should_be_added_product_name(self, expected_name):
-        added_name = self.browser.find_element(*ProductPageLocators.ADDED_PRODUCT_NAME).text
-        assert expected_name == added_name, f"Expected product name '{expected_name}', but got '{added_name}'"
+    def solve_quiz_and_get_code(self):
+        try:
+            time.sleep(0.5)
+            alert = self.browser.switch_to.alert
+            alert_text = alert.text
+            print(f"Alert text: {alert_text}")
 
-    def should_be_basket_price_equal_product_price(self, expected_price):
-        basket_price = self.browser.find_element(*ProductPageLocators.BASKET_PRICE).text
-        assert expected_price == basket_price, f"Expected basket price '{expected_price}', but got '{basket_price}'"
+            x_match = re.search(r"x\s*=\s*([0-9.+-eE]+)", alert_text)
+            if not x_match:
+                raise Exception("Не удалось найти число x в алерте")
+
+            x_val = float(x_match.group(1))
+            answer = str(math.log(abs(12 * math.sin(x_val))))
+
+            alert.send_keys(answer)
+            alert.accept()
+
+            time.sleep(1)
+            alert = self.browser.switch_to.alert
+            print(f"Код подтверждения из alert: {alert.text}")
+            alert.accept()
+
+        except NoAlertPresentException:
+            print("Alert не найден")
+        except Exception as e:
+            print(f"Ошибка при решении капчи: {e}")
+
+    def should_be_success_message(self):
+        assert self.is_element_present(*ProductPageLocators.SUCCESS_MESSAGE), "Success message is not presented"
+
+    def should_not_be_success_message(self):
+        assert self.is_not_element_present(*ProductPageLocators.SUCCESS_MESSAGE), \
+            "Success message is presented, but should not be"
+
+    def should_be_login_link(self):
+        assert self.is_element_present(*ProductPageLocators.LOGIN_LINK), "Login link is not presented"
+
+    def go_to_login_page(self):
+        login_link = self.browser.find_element(*ProductPageLocators.LOGIN_LINK)
+        login_link.click()
+
+    def go_to_basket_page(self):
+        basket_link = self.browser.find_element(*ProductPageLocators.BASKET_LINK)
+        basket_link.click()
+
 
 
